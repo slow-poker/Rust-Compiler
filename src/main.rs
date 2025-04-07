@@ -9,7 +9,6 @@ use std::env;
 use std::fs;
 
 fn main() {
-
     // Let us get commandline arguments and store them in a Vec<String>
     let args: Vec<String> = env::args().collect();
     if args.len() == 1 {
@@ -25,30 +24,25 @@ fn main() {
     // read the entire file contents, storing them inside 'code' as a string.
     let filename = &args[1];
     let code = match fs::read_to_string(filename) {
-    Err(error) => {
-        println!("**Error. File \"{}\": {}", filename, error);
-        return;
-    }
+        Err(error) => {
+            println!("**Error. File \"{}\": {}", filename, error);
+            return;
+        }
 
-    Ok(code) => {
-        code
-    } 
-
+        Ok(code) => code,
     };
 
     let tokens = match lex(&code) {
-    Err(error_message) => {
-        println!("**Error**");
-        println!("----------------------");
-        println!("{}", error_message);
-        println!("----------------------");
-        return;
-    }
+        Err(error_message) => {
+            println!("**Error**");
+            println!("----------------------");
+            println!("{}", error_message);
+            println!("----------------------");
+            return;
+        }
 
-    Ok(data) => data,
-    
+        Ok(data) => data,
     };
-
 
     // print out the lexer tokens parsed.
 
@@ -59,34 +53,33 @@ fn main() {
     println!("Here are the Results:");
     println!("----------------------");
     for t in &tokens {
-      println!("{:?}", t);
+        println!("{:?}", t);
     }
-
 }
 
 // Creating an Enum within Rust.
 // Documentation: https://doc.rust-lang.org/book/ch06-01-defining-an-enum.html
 // Enums are a way of saying a value is one of a possible set of values.
 // Unlike C, Rust enums can have values associated with that particular enum value.
-// for example, a Num has a 'i32' value associated with it, 
+// for example, a Num has a 'i32' value associated with it,
 // but Plus, Subtract, Multiply, etc. have no values associated with it.
 #[derive(Debug, Clone)]
 enum Token {
-  Plus,
-  Subtract,
-  Multiply,
-  Divide,
-  Modulus,
-  Assign,
-  Num(i32),
-  Ident(String),
-  If,
-  While,
-  Read, 
-  Func,
-  Return,
-  Int,
-  End,
+    Plus,
+    Subtract,
+    Multiply,
+    Divide,
+    Modulus,
+    Assign,
+    Num(i32),
+    Ident(String),
+    If,
+    While,
+    Read,
+    Func,
+    Return,
+    Int,
+    End,
 }
 
 // In Rust, you can model the function behavior using the type system.
@@ -103,54 +96,102 @@ enum Token {
 //     Err(the_error),
 // }
 
-
 // This is a lexer that parses numbers and math operations
 fn lex(code: &str) -> Result<Vec<Token>, String> {
-  let bytes = code.as_bytes();
-  let mut tokens: Vec<Token> = vec![];
+    let bytes = code.as_bytes();
+    let mut tokens: Vec<Token> = vec![];
 
-  let mut i = 0;
-  while i < bytes.len() {
-    let c = bytes[i] as char;
+    let mut i = 0;
+    while i < bytes.len() {
+        let c = bytes[i] as char;
 
-    match c {
+        match c {
+            '+' => {
+                //plus
+                tokens.push(Token::Plus);
+                i += 1;
+            }
 
-    '0'..='9' => {
-      let start = i;
-      i += 1;
-      while i < bytes.len() {
-        let digit = bytes[i] as char;
-        if digit >= '0' && digit <= '9' {
-          i += 1;
-        } else {
-          break;
+            '-' => {
+                //subtract
+                tokens.push(Token::Subtract);
+                i += 1;
+            }
+
+            '*' => {
+                //multiply
+                tokens.push(Token::Multiply);
+                i += 1;
+            }
+
+            '/' => {
+                //divide
+                tokens.push(Token::Divide);
+                i += 1;
+            }
+
+            '%' => {
+                //modulus
+                tokens.push(Token::Modulus);
+                i += 1;
+            }
+
+            '=' => {
+                //assign
+                tokens.push(Token::Assign);
+                i += 1;
+            }
+
+            '0'..='9' => {
+                //Num
+                let start = i;
+                i += 1;
+                while i < bytes.len() {
+                    let digit = bytes[i] as char;
+                    if digit >= '0' && digit <= '9' {
+                        i += 1;
+                    } else {
+                        break;
+                    }
+                }
+                let end = i;
+                let string_token = &code[start..end];
+                let number_value = string_token.parse::<i32>().unwrap();
+                let token = Token::Num(number_value);
+                tokens.push(token);
+            }
+
+            //Identifiers and keywords
+            ' ' | '\n' => {
+                //spaces | newlines -> ignore
+                i += 1;
+            }
+
+            '#' => {
+                //comments
+                let start = i;
+                while i < bytes.len() {
+                    let comment_char = bytes[i] as char;
+                    if comment_char == '\n' {
+                        break;
+                    } else {
+                        i += 1;
+                    }
+                }
+                let end = i;
+                let comment_token = &code[start..end];
+                i += 1;
+            }
+
+            _ => {
+                //Error case
+                return Err(format!("Unrecognized symbol '{}'", c));
+            }
         }
-      }
-      let end = i;
-      let string_token = &code[start..end];
-      let number_value = string_token.parse::<i32>().unwrap();
-      let token = Token::Num(number_value);
-      tokens.push(token);
     }
 
-    '+' => {
-      tokens.push(Token::Plus);
-      i += 1;
-    }
-
-    ' ' | '\n' => {
-      i += 1;
-    }
-
-    _ => {
-      return Err(format!("Unrecognized symbol '{}'", c));
-    }
-
-    }
-  }
-
-  tokens.push(Token::End);
-  return Ok(tokens);
+    tokens.push(Token::End);
+    return Ok(tokens);
 }
 
 // writing tests!
@@ -185,5 +226,4 @@ mod tests {
         // test that the lexer catches invalid tokens
         assert!(matches!(lex("^^^"), Err(_)));
     }
-
 }
