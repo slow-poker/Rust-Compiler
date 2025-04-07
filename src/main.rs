@@ -161,7 +161,14 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
                 tokens.push(token);
             }
 
-            //Identifiers and keywords
+            'a'..='z' | 'A'..='Z' => { //Identifiers and keywords
+                let start = i;
+                i+=1;
+                while i < bytes.len() {
+                    
+                }
+            }
+
             ' ' | '\n' => {
                 //spaces | newlines -> ignore
                 i += 1;
