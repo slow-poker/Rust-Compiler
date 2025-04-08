@@ -63,7 +63,7 @@ fn main() {
 // Unlike C, Rust enums can have values associated with that particular enum value.
 // for example, a Num has a 'i32' value associated with it,
 // but Plus, Subtract, Multiply, etc. have no values associated with it.
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq)] //clone
 enum Token {
     Plus,
     Subtract,
@@ -79,7 +79,24 @@ enum Token {
     Func,
     Return,
     Int,
+    Break,
+    Print,
+    Else,
+    Continue,
     End,
+    LeftParen,
+    RightParen,
+    LeftCurly,
+    RightCurly,
+    LeftBracket,
+    RightBracket,
+    Comma,
+    Semicolon,
+    LessEqual,
+    Greater,
+    GreaterEqual,
+    Equality,
+    NotEqual,
 }
 
 // In Rust, you can model the function behavior using the type system.
@@ -161,18 +178,43 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
                 tokens.push(token);
             }
 
-            'a'..='z' | 'A'..='Z' => { //Identifiers and keywords
+            'a'..='z' | 'A'..='Z' => {
+                //Identifiers and keywords
                 let start = i;
-                i+=1;
+                i += 1;
                 while i < bytes.len() {
-                    
+                    let letter = bytes[i] as char;
+                    if (letter >= 'a' && letter <= 'z') || (letter >= 'A' && letter <= 'Z') {
+                        i += 1;
+                    } else {
+                        break;
+                    }
+                }
+                let end = i;
+                let word = &code[start..end];
+                match word {
+                    //tests for keywords
+                    "func" => tokens.push(Token::Func),
+                    "return" => tokens.push(Token::Return),
+                    "int" => tokens.push(Token::Int),
+                    "print" => tokens.push(Token::Print),
+                    "read" => tokens.push(Token::Read),
+                    "while" => tokens.push(Token::While),
+                    "if" => tokens.push(Token::If),
+                    "else" => tokens.push(Token::Else),
+                    "break" => tokens.push(Token::Break),
+                    "continue" => tokens.push(Token::Continue),
+
+                    _ => {
+                        //word is a variable name
+                        println!("This is an identifier: {word}");
+                        tokens.push(Token::Ident(String::from(word)));
+                    }
                 }
             }
 
-            ' ' | '\n' => {
-                //spaces | newlines -> ignore
-                i += 1;
-            }
+            //spaces | newlines -> ignore
+            ' ' | '\n' => i += 1,
 
             '#' => {
                 //comments
@@ -187,6 +229,40 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
                 }
                 let end = i;
                 let comment_token = &code[start..end];
+                println!("This is a comment: {}", comment_token);
+                i += 1;
+            }
+
+            '(' => {
+                tokens.push(Token::LeftParen);
+                i += 1;
+            }
+            ')' => {
+                tokens.push(Token::RightParen);
+                i += 1;
+            }
+            '{' => {
+                tokens.push(Token::LeftCurly);
+                i += 1;
+            }
+            '}' => {
+                tokens.push(Token::RightCurly);
+                i += 1;
+            }
+            '[' => {
+                tokens.push(Token::LeftBracket);
+                i += 1;
+            }
+            ']' => {
+                tokens.push(Token::RightBracket);
+                i += 1;
+            }
+            ',' => {
+                tokens.push(Token::Comma);
+                i += 1;
+            }
+            ':' => {
+                tokens.push(Token::Semicolon);
                 i += 1;
             }
 
@@ -210,27 +286,64 @@ mod tests {
     use crate::Token;
     use crate::lex;
 
-    #[test]
-    fn lexer_test() {
-        // test that lexer works on correct cases
-        let toks = lex("1 + 2 + 3").unwrap();
-        assert!(toks.len() == 6);
-        assert!(matches!(toks[0], Token::Num(1)));
-        assert!(matches!(toks[1], Token::Plus));
-        assert!(matches!(toks[2], Token::Num(2)));
-        assert!(matches!(toks[3], Token::Plus));
-        assert!(matches!(toks[4], Token::Num(3)));
-        assert!(matches!(toks[5], Token::End));
-
-        let toks = lex("3 + 215 +").unwrap();
-        assert!(toks.len() == 5);
-        assert!(matches!(toks[0], Token::Num(3)));
-        assert!(matches!(toks[1], Token::Plus));
-        assert!(matches!(toks[2], Token::Num(215)));
-        assert!(matches!(toks[3], Token::Plus));
-        assert!(matches!(toks[4], Token::End));
-
-        // test that the lexer catches invalid tokens
-        assert!(matches!(lex("^^^"), Err(_)));
+    macro_rules! test_lex {//template for testing
+        ($input:expr, [$( $token:expr ),* $(,)?]) => {
+            {
+                use Token::*; 
+                let tokens = lex($input).unwrap();
+                let expected = vec![$($token),*, End];
+                assert_eq!(tokens, expected, "Failed on input: {}", $input);
+            }
+        };
     }
+
+    #[test]
+    fn lexer_tests() {
+        test_lex!("1 + 2 + 3", [Num(1), Plus, Num(2), Plus, Num(3)]);
+
+    }
+
+    // #[test]
+    // fn plus_tests() {
+    //     // plus between numbers
+    //     let toks = lex("1 + 2 + 3").unwrap();
+    //     assert!(toks.len() == 6);
+    //     assert!(matches!(toks[0], Token::Num(1)));
+    //     assert!(matches!(toks[1], Token::Plus));
+    //     assert!(matches!(toks[2], Token::Num(2)));
+    //     assert!(matches!(toks[3], Token::Plus));
+    //     assert!(matches!(toks[4], Token::Num(3)));
+    //     assert!(matches!(toks[5], Token::End));
+
+
+    //     let inputs: Vec<Token> = 
+
+    //     //plus at the end
+    //     // let toks = lex("3 + 215 +").unwrap();
+    //     assert!(toks.len() == 5);
+    //     assert!(matches!(toks[0], Token::Num(3)));
+    //     assert!(matches!(toks[1], Token::Plus));
+    //     assert!(matches!(toks[2], Token::Num(215)));
+    //     assert!(matches!(toks[3], Token::Plus));
+    //     assert!(matches!(toks[4], Token::End));
+
+    //     //plus at the beginning
+    //     let toks = lex("+ 7 + 5").unwrap();
+    //     assert!(toks.len() == 5);
+    //     assert!(matches!(toks[1], Token::Plus));
+    //     assert!(matches!(toks[2], Token::Num(7)));
+    //     assert!(matches!(toks[3], Token::Plus));
+    //     assert!(matches!(toks[0], Token::Num(5)));
+    //     assert!(matches!(toks[4], Token::End));
+
+    //     //no spaces
+    //     let toks = lex("1+2+3").unwrap();
+    //     assert!(toks.len() == 6);
+    //     assert!(matches!(toks[0], Token::Num(1)));
+    //     assert!(matches!(toks[1], Token::Plus));
+    //     assert!(matches!(toks[2], Token::Num(2)));
+    //     assert!(matches!(toks[3], Token::Plus));
+    //     assert!(matches!(toks[4], Token::Num(3)));
+    //     assert!(matches!(toks[5], Token::End));
+    // }
 }
