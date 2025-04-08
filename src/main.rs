@@ -92,6 +92,7 @@ enum Token {
     RightBracket,
     Comma,
     Semicolon,
+    Less,
     LessEqual,
     Greater,
     GreaterEqual,
@@ -121,42 +122,45 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
     let mut i = 0;
     while i < bytes.len() {
         let c = bytes[i] as char;
-
         match c {
             '+' => {
-                //plus
                 tokens.push(Token::Plus);
                 i += 1;
             }
 
             '-' => {
-                //subtract
                 tokens.push(Token::Subtract);
                 i += 1;
             }
 
             '*' => {
-                //multiply
                 tokens.push(Token::Multiply);
                 i += 1;
             }
 
             '/' => {
-                //divide
                 tokens.push(Token::Divide);
                 i += 1;
             }
 
             '%' => {
-                //modulus
                 tokens.push(Token::Modulus);
                 i += 1;
             }
 
             '=' => {
                 //assign
-                tokens.push(Token::Assign);
                 i += 1;
+                if i < bytes.len() {
+                    if bytes[i] as char == '=' {
+                        tokens.push(Token::Equality);
+                        i += 1;
+                    } else {
+                        tokens.push(Token::Assign);
+                    }
+                } else {
+                    tokens.push(Token::Assign);
+                }
             }
 
             '0'..='9' => {
@@ -205,11 +209,8 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
                     "break" => tokens.push(Token::Break),
                     "continue" => tokens.push(Token::Continue),
 
-                    _ => {
-                        //word is a variable name
-                        println!("This is an identifier: {word}");
-                        tokens.push(Token::Ident(String::from(word)));
-                    }
+                    //word is a variable name
+                    _ => tokens.push(Token::Ident(String::from(word))),
                 }
             }
 
@@ -218,7 +219,7 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
 
             '#' => {
                 //comments
-                let start = i;
+                // let start = i;
                 while i < bytes.len() {
                     let comment_char = bytes[i] as char;
                     if comment_char == '\n' {
@@ -227,9 +228,9 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
                         i += 1;
                     }
                 }
-                let end = i;
-                let comment_token = &code[start..end];
-                println!("This is a comment: {}", comment_token);
+                // let end = i;
+                // let comment_token = &code[start..end];
+                // println!("This is a comment: {comment_token}");
                 i += 1;
             }
 
@@ -261,14 +262,55 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
                 tokens.push(Token::Comma);
                 i += 1;
             }
-            ':' => {
+            ';' => {
                 tokens.push(Token::Semicolon);
                 i += 1;
+            }
+            '<' => {
+                i += 1;
+                if i < bytes.len() {
+                    if bytes[i] as char == '=' {
+                        tokens.push(Token::LessEqual);
+                        i += 1;
+                    } else {
+                        tokens.push(Token::Less);
+                    }
+                } else {
+                    tokens.push(Token::Less);
+                }
+            }
+
+            '>' => {
+                i += 1;
+                if i < bytes.len() {
+                    if bytes[i] as char == '=' {
+                        tokens.push(Token::GreaterEqual);
+                        i += 1;
+                    } else {
+                        tokens.push(Token::Greater);
+                    }
+                } else {
+                    tokens.push(Token::Greater);
+                }
+            }
+
+            '!' => {
+                i += 1;
+                if i < bytes.len() {
+                    if bytes[i] as char == '=' {
+                        tokens.push(Token::NotEqual);
+                        i += 1;
+                    } else {
+                        return Err(format!("Unrecognized symbol: '{}'", c));
+                    }
+                } else {
+                    return Err(format!("Unrecognized symbol: '{}'", c));
+                }
             }
 
             _ => {
                 //Error case
-                return Err(format!("Unrecognized symbol '{}'", c));
+                return Err(format!("Unrecognized symbol: '{}'", c));
             }
         }
     }
@@ -285,65 +327,85 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
 mod tests {
     use crate::Token;
     use crate::lex;
+    use Token::*;
 
     macro_rules! test_lex {//template for testing
         ($input:expr, [$( $token:expr ),* $(,)?]) => {
-            {
-                use Token::*; 
-                let tokens = lex($input).unwrap();
-                let expected = vec![$($token),*, End];
-                assert_eq!(tokens, expected, "Failed on input: {}", $input);
-            }
-        };
+            let tokens = lex($input).unwrap();
+            let expected = vec![$($token),*, End];
+            assert_eq!(tokens, expected, "Failed on input: {}", $input);
+        }
     }
 
     #[test]
-    fn lexer_tests() {
-        test_lex!("1 + 2 + 3", [Num(1), Plus, Num(2), Plus, Num(3)]);
-
+    fn invalid_char_tests() {
+        //NOT A COMPREHENSIVE TEST
+        let invalid_char_list = vec!["\"", "$", "&", "?", "\'"];
+        for invalid_char in invalid_char_list {
+            assert!(matches!(lex(invalid_char), Err(_)));
+        }
     }
 
-    // #[test]
-    // fn plus_tests() {
-    //     // plus between numbers
-    //     let toks = lex("1 + 2 + 3").unwrap();
-    //     assert!(toks.len() == 6);
-    //     assert!(matches!(toks[0], Token::Num(1)));
-    //     assert!(matches!(toks[1], Token::Plus));
-    //     assert!(matches!(toks[2], Token::Num(2)));
-    //     assert!(matches!(toks[3], Token::Plus));
-    //     assert!(matches!(toks[4], Token::Num(3)));
-    //     assert!(matches!(toks[5], Token::End));
+    #[test]
+    fn simple_chars() {
+        //basic test for char ordering
+        test_lex!("(", [LeftParen]);
+        test_lex!("( 1", [LeftParen, Num(1)]);
+        test_lex!("1 (", [Num(1), LeftParen]);
 
+        //basic test for single chars
+        test_lex!(")", [RightParen]);
+        test_lex!("{", [LeftCurly]);
+        test_lex!("}", [RightCurly]);
+        test_lex!("[", [LeftBracket]);
+        test_lex!("]", [RightBracket]);
+        test_lex!(",", [Comma]);
+        test_lex!(";", [Semicolon]);
+        test_lex!("+", [Plus]);
+        test_lex!("-", [Subtract]);
+        test_lex!("*", [Multiply]);
+        test_lex!("/", [Divide]);
+        test_lex!("%", [Modulus]);
+    }
 
-    //     let inputs: Vec<Token> = 
+    #[test]
+    fn complex_chars() {
+        test_lex!("<", [Less]);
+        test_lex!("<=", [LessEqual]);
+        test_lex!(">", [Greater]);
+        test_lex!(">=", [GreaterEqual]);
+        test_lex!("=", [Assign]);
+        test_lex!("==", [Equality]);
+        test_lex!("!=", [NotEqual]);
+    }
 
-    //     //plus at the end
-    //     // let toks = lex("3 + 215 +").unwrap();
-    //     assert!(toks.len() == 5);
-    //     assert!(matches!(toks[0], Token::Num(3)));
-    //     assert!(matches!(toks[1], Token::Plus));
-    //     assert!(matches!(toks[2], Token::Num(215)));
-    //     assert!(matches!(toks[3], Token::Plus));
-    //     assert!(matches!(toks[4], Token::End));
+    #[test]
+    fn keywords() {
+        //string order test
+        test_lex!("func", [Func]);
+        test_lex!("func 1", [Func, Num(1)]);
+        test_lex!("1 func", [Num(1), Func]);
 
-    //     //plus at the beginning
-    //     let toks = lex("+ 7 + 5").unwrap();
-    //     assert!(toks.len() == 5);
-    //     assert!(matches!(toks[1], Token::Plus));
-    //     assert!(matches!(toks[2], Token::Num(7)));
-    //     assert!(matches!(toks[3], Token::Plus));
-    //     assert!(matches!(toks[0], Token::Num(5)));
-    //     assert!(matches!(toks[4], Token::End));
+        //basic string test
+        test_lex!("return", [Return]);
+        test_lex!("int", [Int]);
+        test_lex!("print", [Print]);
+        test_lex!("read", [Read]);
+        test_lex!("while", [While]);
+        test_lex!("if", [If]);
+        test_lex!("else", [Else]);
+        test_lex!("break", [Break]);
+        test_lex!("continue", [Continue]);
+    }
 
-    //     //no spaces
-    //     let toks = lex("1+2+3").unwrap();
-    //     assert!(toks.len() == 6);
-    //     assert!(matches!(toks[0], Token::Num(1)));
-    //     assert!(matches!(toks[1], Token::Plus));
-    //     assert!(matches!(toks[2], Token::Num(2)));
-    //     assert!(matches!(toks[3], Token::Plus));
-    //     assert!(matches!(toks[4], Token::Num(3)));
-    //     assert!(matches!(toks[5], Token::End));
-    // }
+    #[test]
+    fn variable_names() {
+        test_lex!("myVariable", [Ident("myVariable".to_string())]);
+        test_lex!("myVariable", [Ident("myVariable".to_string())]);
+    }
+
+    #[test]
+    fn dummy_code() {
+        
+    }
 }
