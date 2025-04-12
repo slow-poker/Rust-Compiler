@@ -63,7 +63,8 @@ fn main() {
 // Unlike C, Rust enums can have values associated with that particular enum value.
 // for example, a Num has a 'i32' value associated with it,
 // but Plus, Subtract, Multiply, etc. have no values associated with it.
-#[derive(Debug, PartialEq)] //clone
+use strum_macros::Display;
+#[derive(Debug, PartialEq, Display)] //clone
 enum Token {
     Plus,
     Subtract,
@@ -98,6 +99,18 @@ enum Token {
     GreaterEqual,
     Equality,
     NotEqual,
+}
+
+//used only for testing
+#[allow(dead_code)]
+impl Token {
+    pub fn to_file_string(&self) -> String {
+        match self {
+            Token::Num(number) => format!("Num({})", number),
+            Token::Ident(code_string) => format!("Ident(\"{}\")", code_string),
+            _ => format!("{}", self),
+        }
+    }
 }
 
 // In Rust, you can model the function behavior using the type system.
@@ -401,11 +414,50 @@ mod tests {
     #[test]
     fn variable_names() {
         test_lex!("myVariable", [Ident("myVariable".to_string())]);
-        test_lex!("myVariable", [Ident("myVariable".to_string())]);
+        test_lex!(" myVariable", [Ident("myVariable".to_string())]);
+        test_lex!("myVariable ", [Ident("myVariable".to_string())]);
+        test_lex!("my2Variable", [Ident("my2Variable".to_string())]);
     }
 
     #[test]
     fn dummy_code() {
-        
+        use std::fs::{DirEntry, read_to_string, read_dir};
+        use relative_path::RelativePath;
+
+        // Create and convert the relative path
+        let rel_path_ex = RelativePath::new("examples");
+        let pathbuf_ex = rel_path_ex.to_path("./");
+        let paths_ex = read_dir(pathbuf_ex).unwrap();
+
+        let mut test_files: Vec<DirEntry> = vec![];
+        for file in paths_ex {
+            test_files.push(file.unwrap());
+        }
+
+        let mut i = 0;
+        while i < test_files.len() {
+            if test_files[i].path().display().to_string().ends_with(".tt") {
+
+                //create test_token_string
+                let lex_input = read_to_string(test_files[i].path()).unwrap();
+                let test_token_vec: Vec<String> = lex(&lex_input).unwrap().iter().map(|t| t.to_file_string()).collect();
+                let test_token_string = test_token_vec.join("\n") + "\n";
+
+                //find matching sol file
+                let test_path_string= test_files[i].path().display().to_string();
+                let mut sol_filename = "".to_string();
+                for (i, c) in test_path_string.char_indices() {
+                    if c == '/' {
+                        let test_filename = test_path_string[i..test_path_string.len()-3].to_string() + "Sol";
+                        sol_filename = test_path_string[0..i].to_string() + "/solutions" + &test_filename;
+                    }
+                }
+
+                //create sol_token_string
+                let sol_token_string = read_to_string(std::path::Path::new(&sol_filename)).unwrap();
+                assert_eq!(test_token_string, sol_token_string); //add match for error with str "check trailing newlines in sol files"
+            }
+            i+=1;
+        }
     }
 }
