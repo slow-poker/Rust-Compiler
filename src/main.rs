@@ -444,7 +444,7 @@ mod tests {
                 //create test_token_string
                 let lex_input = read_to_string(test_files[i].path()).unwrap();
                 let test_token_vec: Vec<String> = lex(&lex_input).unwrap().iter().map(|t| t.to_file_string()).collect();
-                let test_token_string = test_token_vec.join("\n") + "\n";
+                let test_token_string = test_token_vec.join("\n") + "\n"; //sol files have trailing newline
 
                 //find matching sol file
                 let test_path_string= test_files[i].path().display().to_string();
