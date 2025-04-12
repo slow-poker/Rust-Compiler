@@ -200,8 +200,8 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
                 let start = i;
                 i += 1;
                 while i < bytes.len() {
-                    let letter = bytes[i] as char;
-                    if (letter >= 'a' && letter <= 'z') || (letter >= 'A' && letter <= 'Z') {
+                    let symbol = bytes[i] as char;
+                    if (symbol >= 'a' && symbol <= 'z') || (symbol >= 'A' && symbol <= 'Z') || (symbol >= '0' && symbol <= '9'){
                         i += 1;
                     } else {
                         break;
@@ -342,7 +342,8 @@ mod tests {
     use crate::lex;
     use Token::*;
 
-    macro_rules! test_lex {//template for testing
+    //helper function
+    macro_rules! test_lex_eq {//template for testing
         ($input:expr, [$( $token:expr ),* $(,)?]) => {
             let tokens = lex($input).unwrap();
             let expected = vec![$($token),*, End];
@@ -362,65 +363,67 @@ mod tests {
     #[test]
     fn simple_chars() {
         //basic test for char ordering
-        test_lex!("(", [LeftParen]);
-        test_lex!("( 1", [LeftParen, Num(1)]);
-        test_lex!("1 (", [Num(1), LeftParen]);
+        test_lex_eq!("(", [LeftParen]);
+        test_lex_eq!("( 1", [LeftParen, Num(1)]);
+        test_lex_eq!("1 (", [Num(1), LeftParen]);
 
         //basic test for single chars
-        test_lex!(")", [RightParen]);
-        test_lex!("{", [LeftCurly]);
-        test_lex!("}", [RightCurly]);
-        test_lex!("[", [LeftBracket]);
-        test_lex!("]", [RightBracket]);
-        test_lex!(",", [Comma]);
-        test_lex!(";", [Semicolon]);
-        test_lex!("+", [Plus]);
-        test_lex!("-", [Subtract]);
-        test_lex!("*", [Multiply]);
-        test_lex!("/", [Divide]);
-        test_lex!("%", [Modulus]);
+        test_lex_eq!(")", [RightParen]);
+        test_lex_eq!("{", [LeftCurly]);
+        test_lex_eq!("}", [RightCurly]);
+        test_lex_eq!("[", [LeftBracket]);
+        test_lex_eq!("]", [RightBracket]);
+        test_lex_eq!(",", [Comma]);
+        test_lex_eq!(";", [Semicolon]);
+        test_lex_eq!("+", [Plus]);
+        test_lex_eq!("-", [Subtract]);
+        test_lex_eq!("*", [Multiply]);
+        test_lex_eq!("/", [Divide]);
+        test_lex_eq!("%", [Modulus]);
     }
 
     #[test]
     fn complex_chars() {
-        test_lex!("<", [Less]);
-        test_lex!("<=", [LessEqual]);
-        test_lex!(">", [Greater]);
-        test_lex!(">=", [GreaterEqual]);
-        test_lex!("=", [Assign]);
-        test_lex!("==", [Equality]);
-        test_lex!("!=", [NotEqual]);
+        test_lex_eq!("<", [Less]);
+        test_lex_eq!("<=", [LessEqual]);
+        test_lex_eq!(">", [Greater]);
+        test_lex_eq!(">=", [GreaterEqual]);
+        test_lex_eq!("=", [Assign]);
+        test_lex_eq!("==", [Equality]);
+        test_lex_eq!("!=", [NotEqual]);
     }
 
     #[test]
     fn keywords() {
         //string order test
-        test_lex!("func", [Func]);
-        test_lex!("func 1", [Func, Num(1)]);
-        test_lex!("1 func", [Num(1), Func]);
+        test_lex_eq!("func", [Func]);
+        test_lex_eq!("func 1", [Func, Num(1)]);
+        test_lex_eq!("1 func", [Num(1), Func]);
 
         //basic string test
-        test_lex!("return", [Return]);
-        test_lex!("int", [Int]);
-        test_lex!("print", [Print]);
-        test_lex!("read", [Read]);
-        test_lex!("while", [While]);
-        test_lex!("if", [If]);
-        test_lex!("else", [Else]);
-        test_lex!("break", [Break]);
-        test_lex!("continue", [Continue]);
+        test_lex_eq!("return", [Return]);
+        test_lex_eq!("int", [Int]);
+        test_lex_eq!("print", [Print]);
+        test_lex_eq!("read", [Read]);
+        test_lex_eq!("while", [While]);
+        test_lex_eq!("if", [If]);
+        test_lex_eq!("else", [Else]);
+        test_lex_eq!("break", [Break]);
+        test_lex_eq!("continue", [Continue]);
     }
 
     #[test]
     fn variable_names() {
-        test_lex!("myVariable", [Ident("myVariable".to_string())]);
-        test_lex!(" myVariable", [Ident("myVariable".to_string())]);
-        test_lex!("myVariable ", [Ident("myVariable".to_string())]);
-        test_lex!("my2Variable", [Ident("my2Variable".to_string())]);
+        test_lex_eq!("myVariable", [Ident("myVariable".to_string())]);
+        test_lex_eq!(" myVariable", [Ident("myVariable".to_string())]);
+        test_lex_eq!("myVariable ", [Ident("myVariable".to_string())]);
+        test_lex_eq!("my2Variable", [Ident("my2Variable".to_string())]);
+        test_lex_eq!("123myVariable", [Num(123), Ident("myVariable".to_string())]);
+        test_lex_eq!("myVariable123", [Ident("myVariable123".to_string())]);
     }
 
     #[test]
-    fn dummy_code() {
+    fn example_code() {
         use std::fs::{DirEntry, read_to_string, read_dir};
         use relative_path::RelativePath;
 
